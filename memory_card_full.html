@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Card Game: Player vs Computer</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: black;
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      width: 300px;
+      margin-bottom: 20px;
+    }
+
+    #game-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 3fr)); /* Adjust card size */
+  grid-gap: 15px; /* Space between cards */
+  padding: 20px;
+  max-width: 1900px; /* Limit board width */
+  margin: 0 auto; /* Center board */
+  justify-items: center; /* Center items in their grid cells */
+  align-items: center; /* Vertically center items */
+}
+
+
+    .card {
+      position: relative;
+      width: 100px;
+      height: 150px;
+      transform-style: preserve-3d;
+      transform: rotateY(0deg);
+      transition: transform 0.6s;
+      cursor: pointer;
+      border-radius: 10px;
+      outline: 2px solid red;
+    }
+
+    .card.flip {
+      transform: rotateY(180deg);
+    }
+
+    .card .front, .card .back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      /* backface-visibility: hidden; */
+      border-radius: 10px;
+    }
+
+    .card .front {
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      outline: 2px solid rgb(161, 0, 0);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .card .front img {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .card .back {
+      /* background: #ff0000; */
+      transform: rotateY(180deg);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    button {
+      background: #ff6b6b;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-ease 0.3s;
+    }
+
+    button:hover {
+      background: #e63946;
+    }
+    .card .front {
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  outline: 2px solid rgb(161, 0, 0);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  visibility: hidden; /* Hide the front side initially */
+}
+
+.card.flip .front {
+  visibility: visible; /* Show the front when flipped */
+}
+
+  </style>
+</head>
+<body>
+  <h1>Memory Card Game: Player vs Computer</h1>
+  <div class="stats">
+    <span id="player-score">Player: 0</span>
+    <span id="computer-score">Computer: 0</span>
+  </div>
+  <div id="game-board"></div>
+  <button id="restart-btn">Restart Game</button>
+  <!-- <a href="memory_card3.html" style="text-decoration: none;">
+    <button style="background: #4CAF50; color: white; padding: 6px 32px; font-size: 16px; border: none; border-radius: 4px; cursor: pointer;">
+      Next Page
+    </button>
+  </a> -->
+  
+
+  <script>
+    const cardImages = [
+    "red/eagle2.jpg",
+      "red/cat.jpeg",
+      "red/duck.png",
+      "red/lion.jpeg",
+      "red/frog.jpeg",
+      "red/tiger.jpeg",
+      "red/fox.jpeg",
+      "red/dog.jpeg",
+      "red/elephant2.png",
+      
+
+      "red/dinosaur.jpeg",
+      "red/fish.jpeg",
+      "red/horse.jpeg",
+      "red/dolphin.jpg",
+      "red/camel.jpeg",
+      "red/rabbit.jpeg",
+      "red/squirrel.jpeg",
+      "red/donkey.jpeg",
+      "red/crow.jpeg",
+      
+
+      "red/mouse.jpeg",
+      "red/sheep.jpeg",
+      "red/flyingdino.jpeg",
+      "red/human.jpeg",
+      "red/bat2.jpeg",
+      "red/turtle.jpeg",
+      "red/chicken.jpeg",
+      "red/rhino.jpeg",
+      "red/snake.jpeg",
+      
+      "red/butterfly.jpeg",
+      "red/zebra.jpeg",
+      "red/cow.png",
+      "red/bear.jpeg",
+      "red/lizard.jpeg",
+      "red/owl.jpeg",
+      "red/elephant.jpeg",
+      "red/rabbit.jpeg",
+      "red/eagle.jpg"
+     
+    ];
+
+    const gameBoard = document.getElementById("game-board");
+    const playerScoreDisplay = document.getElementById("player-score");
+    const computerScoreDisplay = document.getElementById("computer-score");
+    const restartButton = document.getElementById("restart-btn");
+
+    let flippedCards = [];
+    let playerScore = 0;
+    let computerScore = 0;
+    let matches = 0;
+    let isPlayerTurn = true;
+    let lockBoard = false;
+    let computerMemory = [];
+
+    function initGame() {
+      gameBoard.innerHTML = "";
+      resetStats();
+      const shuffledCards = [...cardImages, ...cardImages].sort(() => Math.random() - 0.5);
+      shuffledCards.forEach((image, index) => {
+        const card = document.createElement("div");
+        card.classList.add("card");
+        card.dataset.index = index;
+        card.dataset.image = image;
+        card.innerHTML = `
+          <div class="front"><img src="${image}" alt="Card"></div>
+          <div class="back"></div>
+        `;
+        card.addEventListener("click", () => {
+          if (isPlayerTurn && !lockBoard) playerFlipCard(card);
+        });
+        gameBoard.appendChild(card);
+      });
+    }
+
+    function playerFlipCard(card) {
+      if (flippedCards.length === 2 || card.classList.contains("flip") || lockBoard) return;
+      flipCard(card);
+
+      if (flippedCards.length === 2) {
+        lockBoard = true;
+
+        setTimeout(() => {
+          const isMatch = checkMatch();
+          if (isMatch) {
+            playerScore++;
+            playerScoreDisplay.textContent = `Player: ${playerScore}`;
+          }
+          flippedCards = [];
+          lockBoard = false;
+
+          if (!isGameOver()) {
+            isPlayerTurn = false;
+            setTimeout(computerTurn, 1000);
+          }
+        }, 1000);
+      }
+    }
+
+    function computerTurn() {
+      if (matches === cardImages.length) return;
+      const remainingCards = Array.from(document.querySelectorAll(".card:not(.flip)"));
+      let card1, card2;
+
+      let foundMatch = false;
+      for (let i = 0; i < computerMemory.length; i++) {
+        for (let j = i + 1; j < computerMemory.length; j++) {
+          if (computerMemory[i].image === computerMemory[j].image) {
+            card1 = computerMemory[i].card;
+            card2 = computerMemory[j].card;
+            foundMatch = true;
+            break;
+          }
+        }
+        if (foundMatch) break;
+      }
+
+      if (!foundMatch) {
+        card1 = remainingCards[Math.floor(Math.random() * remainingCards.length)];
+        do {
+          card2 = remainingCards[Math.floor(Math.random() * remainingCards.length)];
+        } while (card1 === card2);
+      }
+
+      flipCard(card1);
+      setTimeout(() => flipCard(card2), 500);
+
+      setTimeout(() => {
+        const isMatch = checkMatch();
+        if (isMatch) {
+          computerScore++;
+          computerScoreDisplay.textContent = `Computer: ${computerScore}`;
+        }
+        flippedCards = [];
+        lockBoard = false;
+
+        if (!isGameOver()) {
+          isPlayerTurn = true;
+        }
+        computerMemory = [];
+      }, 1000);
+    }
+
+    function flipCard(card) {
+      if (!card.classList.contains("flip")) {
+        card.classList.add("flip");
+        flippedCards.push({ card, image: card.dataset.image });
+      }
+    }
+
+    function checkMatch() {
+      const [first, second] = flippedCards;
+      if (first.image === second.image) {
+        matches++;
+        return true;
+      } else {
+        setTimeout(() => {
+          first.card.classList.remove("flip");
+          second.card.classList.remove("flip");
+        }, 500);
+        return false;
+      }
+    }
+
+    function resetStats() {
+      flippedCards = [];
+      computerMemory = [];
+      playerScore = 0;
+      computerScore = 0;
+      matches = 0;
+      isPlayerTurn = true;
+      lockBoard = false;
+      playerScoreDisplay.textContent = "Player: 0";
+      computerScoreDisplay.textContent = "Computer: 0";
+    }
+
+    function isGameOver() {
+      if (matches === cardImages.length) {
+        setTimeout(() => {
+          const winner =
+            playerScore > computerScore
+              ? "Player wins!"
+              : playerScore < computerScore
+              ? "Computer wins!"
+              : "It's a tie!";
+          alert(`Game Over! ${winner}`);
+        }, 500);
+        return true;
+      }
+      return false;
+    }
+
+    restartButton.addEventListener("click", initGame);
+    initGame();
+  </script>
+</body>
+</html>
